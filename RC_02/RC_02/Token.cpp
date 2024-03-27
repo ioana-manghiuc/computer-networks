@@ -7,6 +7,16 @@ Token::Token()
 	// Empty
 }
 
+const std::string& Token::GetSourceIP() const
+{
+	return m_sourceIP;
+}
+
+const std::string& Token::GetDestinationIP() const
+{
+	return m_destinationIP;
+}
+
 void Token::SetSourceIP(const std::string& sourceIP)
 {
 	m_sourceIP = sourceIP;
@@ -21,5 +31,5 @@ void Token::SetMessage(const std::string& message)
 {
 	m_message = message;
 	m_status = ETokenStatus::Occupied;
-	m_messageStatus = EMessageStatus::LeftDestination;
+	m_messageStatus = EMessageStatus::LeftSource;
 }

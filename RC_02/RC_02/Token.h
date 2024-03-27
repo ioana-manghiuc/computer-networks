@@ -8,9 +8,12 @@ class Token
 public:
 	Token();
 
+	const std::string& GetSourceIP() const;
+	const std::string& GetDestinationIP() const;
+
 	void SetSourceIP(const std::string& sourceIP);
 	void SetDestinationIP(const std::string& destinationIP);
-	void SetMessage(const std::string& message); // sets status' as well
+	void SetMessage(const std::string& message); // sets statuses as well
 
 
 private:

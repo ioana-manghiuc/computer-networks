@@ -1,8 +1,9 @@
 #pragma once
 enum class EMessageStatus
 {
-	LeftDestination,
+	LeftSource,
 	ReachedDestination,
+	ReturnedToSource,
 	NotSet
 };
 
