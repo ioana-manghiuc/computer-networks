@@ -12,7 +12,7 @@ public:
 	TokenRingNetwork();
 
 	std::pair<ComputerPtr, ComputerPtr> GenerateSourceAndDestination();
-	void SendPacket(const std::string& message);
+	ComputerPtr SendPacket(const std::string& message, ComputerPtr previousSource);
 	void Run();
 
 	friend std::ostream& operator<<(std::ostream& os, const TokenRingNetwork& network);

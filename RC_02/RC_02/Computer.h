@@ -4,7 +4,7 @@
 #include <fstream>
 
 static const std::string_view MOVE = "Moving Token";
-static const std::string_view RECEIVE = "Token received by destination";
+static const std::string_view RECEIVED = "Token received by destination";
 static const std::string_view RETURNED = "Token returned to source";
 static const std::string_view ACQUIRED = "Token acquired by source - sending to destination";
 

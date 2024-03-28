@@ -33,3 +33,15 @@ void Token::SetMessage(const std::string& message)
 	m_status = ETokenStatus::Occupied;
 	m_messageStatus = EMessageStatus::LeftSource;
 }
+
+void Token::Free()
+{
+	m_message = "";
+	m_status = ETokenStatus::Free;
+	m_messageStatus = EMessageStatus::ReachedDestination;
+}
+
+bool Token::IsFree()
+{
+	return m_status == ETokenStatus::Free || m_status == ETokenStatus::None;
+}

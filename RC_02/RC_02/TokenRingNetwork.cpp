@@ -92,16 +92,24 @@ std::pair<ComputerPtr, ComputerPtr> TokenRingNetwork::GenerateSourceAndDestinati
 	return {source, destination};
 }
 
-void TokenRingNetwork::SendPacket(const std::string& message)
+ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr previousSource)
 {
 	auto [source, destination] = GenerateSourceAndDestination();
 
 	std::cout << "Source: C" << source->GetID() << " - " << source->GetIPAddress()
 		<< "\nDestination: C" << destination->GetID() << " - " << destination->GetIPAddress() << std::endl;
 
-	m_token->SetMessage(message);
-	m_token->SetSourceIP(source->GetIPAddress());
-	m_token->SetDestinationIP(destination->GetIPAddress());
+	if (m_token->IsFree())
+	{
+		m_token->SetMessage(message);
+		m_token->SetSourceIP(source->GetIPAddress());
+		m_token->SetDestinationIP(destination->GetIPAddress());
+	}
+	else
+	{
+		std::cerr << "Error: Token is not free." << std::endl;
+		return nullptr;
+	}
 
 	auto it_source = std::find_if(m_computers.begin(), m_computers.end(),
 		[&source](const ComputerPtr& comp) { return comp->GetIPAddress() == source->GetIPAddress(); });
@@ -111,11 +119,26 @@ void TokenRingNetwork::SendPacket(const std::string& message)
 
 	if (it_source == m_computers.end() || it_destination == m_computers.end()) {
 		std::cerr << "Error: Source or destination computer not found in the network." << std::endl;
-		return;
+		return nullptr;
 	}
 
 	std::vector<ComputerPtr> tokenRing;
 	tokenRing.reserve(m_computers.size() * 2);
+
+	int prevsource_pos = 0;
+	// previous source to current source
+	if (previousSource) {
+		auto it_previous_source = std::find(m_computers.begin(), m_computers.end(), previousSource);
+		prevsource_pos = std::distance(m_computers.begin(), it_previous_source);
+		if (it_previous_source != m_computers.end() && it_previous_source != it_source) {
+			if (it_previous_source < it_source)
+				std::copy(it_previous_source, it_source + 1, std::back_inserter(tokenRing));
+			else {
+				std::copy(it_previous_source, m_computers.end(), std::back_inserter(tokenRing));
+				std::copy(m_computers.begin(), it_source + 1, std::back_inserter(tokenRing));
+			}
+		}
+	}
 
 	// from source to destination
 	if (it_source <= it_destination)
@@ -149,15 +172,80 @@ void TokenRingNetwork::SendPacket(const std::string& message)
 		tokenRing.push_back(source);
 	}
 
+	int destination_pos = std::distance(m_computers.begin(), it_destination);
+	m_computers[destination_pos]->SetBufferContent(message);
+
+	int countS = 0;
+	int	countD = 0;
+	bool sourceFound = false;
 	for (auto c : tokenRing)
 	{
-		std::cout << *c << std::endl;
+		if (c->GetIPAddress() == source->GetIPAddress() && countS == 0 && previousSource == nullptr)
+		{
+			c->SetAction(MOVE);
+			countS++;
+		}
+		else if (c->GetIPAddress() == source->GetIPAddress() && countS == 0 && previousSource != nullptr)
+		{
+			c->SetAction(ACQUIRED);
+			sourceFound = true;
+			countS++;
+		}
+		else if (c->GetIPAddress() == source->GetIPAddress() && countS == 1 && previousSource != nullptr)
+		{
+			c->SetAction(MOVE);
+			countS++;
+		}
+		else if ((c->GetIPAddress() == source->GetIPAddress() && countS == 2 && previousSource != nullptr)
+			|| (c->GetIPAddress() == source->GetIPAddress() && source == previousSource && previousSource != nullptr))
+		{
+			c->SetAction(RETURNED);
+			m_token->Free();
+			countS++;
+		}
+		else if (c->GetIPAddress() == source->GetIPAddress() && countS == 1)
+		{
+			c->SetAction(RETURNED);
+			m_token->Free();
+		}
+		else if (c->GetIPAddress() == destination->GetIPAddress() && countD == 0 && sourceFound && previousSource != nullptr)
+		{
+			c->SetAction(RECEIVED);
+			countD++;
+		}
+		else if (c->GetIPAddress() == destination->GetIPAddress() && countD == 1 && previousSource != nullptr)
+		{
+			c->SetAction(MOVE);
+			countD++;
+		}
+		else if (c->GetIPAddress() == destination->GetIPAddress() && countD == 0 && previousSource == nullptr)
+		{
+			c->SetAction(RECEIVED);
+			countD++;
+		}
+		else
+		{
+			c->SetAction(MOVE);			
+		}
+		c->PrintAction();
 	}
+
+	for (auto c : m_computers)
+	{
+		std::cout << *c << std::endl;
+	}	
+
+	tokenRing.clear();
+	return source;
 }
+
 
 void TokenRingNetwork::Run()
 {
 	std::string input;
+	ComputerPtr firstSource = std::make_shared<Computer>();
+	ComputerPtr source;
+	int iteration = 0;
 	while (true)
 	{
 		std::cout<< "Do you want to send a message? (y/n)";
@@ -165,14 +253,29 @@ void TokenRingNetwork::Run()
 		if (input == "y" || input == "Y")
 		{
 			std::string message;
-			std::cout << "Enter message: "; std::cin >> message;
-			SendPacket(message);
+			std::cout << "Enter message: ";
+			std::cin.ignore(); 
+			std::getline(std::cin, message);
+			if (iteration == 0)
+			{
+				firstSource = SendPacket(message, nullptr);
+				iteration++;
+			}
+			else if (iteration == 1)
+			{
+				source = SendPacket(message, firstSource);
+				iteration++;
+			}
+			else
+			{
+				ComputerPtr prev = source;
+				source = SendPacket(message, prev);
+			}
 		}
 		else
 		{
 			break;
-		}
-		
+		}		
 	}
 }
 
