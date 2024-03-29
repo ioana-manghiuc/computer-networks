@@ -11,7 +11,7 @@ class TokenRingNetwork
 public:
 	TokenRingNetwork();
 
-	std::pair<ComputerPtr, ComputerPtr> GenerateSourceAndDestination();
+	std::pair<ComputerPtr, ComputerPtr> GenerateSourceAndDestination(ComputerPtr prevSource);
 	ComputerPtr SendPacket(const std::string& message, ComputerPtr previousSource);
 	void Run();
 

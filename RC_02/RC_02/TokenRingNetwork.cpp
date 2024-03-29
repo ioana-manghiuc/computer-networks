@@ -76,7 +76,7 @@ void TokenRingNetwork::ReadComputers()
 	input.close();
 }
 
-std::pair<ComputerPtr, ComputerPtr> TokenRingNetwork::GenerateSourceAndDestination()
+std::pair<ComputerPtr, ComputerPtr> TokenRingNetwork::GenerateSourceAndDestination(ComputerPtr prevSource)
 {
 	std::random_device RD;
 	std::mt19937 engine(RD());
@@ -87,14 +87,14 @@ std::pair<ComputerPtr, ComputerPtr> TokenRingNetwork::GenerateSourceAndDestinati
 	do
 	{
 		destination = m_computers[distr(engine)];
-	} while (source == destination);
+	} while (source == destination || source == prevSource);
 
 	return {source, destination};
 }
 
 ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr previousSource)
 {
-	auto [source, destination] = GenerateSourceAndDestination();
+	auto [source, destination] = GenerateSourceAndDestination(previousSource);
 
 	std::cout << "Source: C" << source->GetID() << " - " << source->GetIPAddress()
 		<< "\nDestination: C" << destination->GetID() << " - " << destination->GetIPAddress() << std::endl;
