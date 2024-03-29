@@ -99,6 +99,17 @@ ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr
 	std::cout << "Source: C" << source->GetID() << " - " << source->GetIPAddress()
 		<< "\nDestination: C" << destination->GetID() << " - " << destination->GetIPAddress() << std::endl;
 
+	auto it_source = std::find_if(m_computers.begin(), m_computers.end(),
+		[&source](const ComputerPtr& comp) { return comp->GetIPAddress() == source->GetIPAddress(); });
+
+	auto it_destination = std::find_if(m_computers.begin(), m_computers.end(),
+		[&destination](const ComputerPtr& comp) { return comp->GetIPAddress() == destination->GetIPAddress(); });
+
+	if (it_source == m_computers.end() || it_destination == m_computers.end())
+	{
+		std::cerr << "Error: Source or destination computer not found in the network." << std::endl; return nullptr;
+	}
+
 	if (m_token->IsFree())
 	{
 		m_token->SetMessage(message);
@@ -107,19 +118,7 @@ ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr
 	}
 	else
 	{
-		std::cerr << "Error: Token is not free." << std::endl;
-		return nullptr;
-	}
-
-	auto it_source = std::find_if(m_computers.begin(), m_computers.end(),
-		[&source](const ComputerPtr& comp) { return comp->GetIPAddress() == source->GetIPAddress(); });
-
-	auto it_destination = std::find_if(m_computers.begin(), m_computers.end(),
-		[&destination](const ComputerPtr& comp) { return comp->GetIPAddress() == destination->GetIPAddress(); });
-
-	if (it_source == m_computers.end() || it_destination == m_computers.end()) {
-		std::cerr << "Error: Source or destination computer not found in the network." << std::endl;
-		return nullptr;
+		std::cerr << "Error: Token is not free." << std::endl; return nullptr;
 	}
 
 	std::vector<ComputerPtr> tokenRing;
@@ -143,9 +142,9 @@ ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr
 	// from source to destination
 	if (it_source <= it_destination)
 		std::copy(it_source, it_destination + 1, std::back_inserter(tokenRing));
-	else {
+	else
+	{
 		std::copy(it_source, m_computers.end(), std::back_inserter(tokenRing));
-
 		std::copy(m_computers.begin(), it_destination + 1, std::back_inserter(tokenRing));
 	}
 
@@ -154,30 +153,24 @@ ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr
 
 	// if source reached after destination, stop inserting
 	bool source_reached = false;
-	for (auto it = std::next(it_destination); it != m_computers.end(); ++it) {
-		if (*it == *it_source) {
-			source_reached = true;
-			break;
-		}
+	for (auto it = std::next(it_destination); it != m_computers.end(); ++it)
+	{
+		if (*it == *it_source) { source_reached = true; break; }
 		tokenRing.push_back(*it);
 	}
 
-	if (!source_reached) {
-		for (auto it = m_computers.begin(); it != it_source + 1; ++it) {
+	if (!source_reached)
+	{
+		for (auto it = m_computers.begin(); it != it_source + 1; ++it)
+		{
 			tokenRing.push_back(*it);
 		}
 	}
 
-	if (tokenRing.back()->GetIPAddress() != source->GetIPAddress()) {
-		tokenRing.push_back(source);
-	}
+	if (tokenRing.back()->GetIPAddress() != source->GetIPAddress()) { tokenRing.push_back(source); }
 
-	int destination_pos = std::distance(m_computers.begin(), it_destination);
-	m_computers[destination_pos]->SetBufferContent(message);
+	int countS = 0; int	countD = 0; bool sourceFound = false;
 
-	int countS = 0;
-	int	countD = 0;
-	bool sourceFound = false;
 	for (auto c : tokenRing)
 	{
 		if (c->GetIPAddress() == source->GetIPAddress() && countS == 0 && previousSource == nullptr)
@@ -208,9 +201,13 @@ ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr
 			c->SetAction(RETURNED);
 			m_token->Free();
 		}
-		else if (c->GetIPAddress() == destination->GetIPAddress() && countD == 0 && sourceFound && previousSource != nullptr)
+		else if ((c->GetIPAddress() == destination->GetIPAddress() && countD == 0 && sourceFound && previousSource != nullptr) 
+			|| (c->GetIPAddress() == destination->GetIPAddress() && countD == 0 && previousSource == nullptr))
 		{
 			c->SetAction(RECEIVED);
+			m_token->ReachedDestination();
+			int destination_pos = std::distance(m_computers.begin(), it_destination);
+			m_computers[destination_pos]->SetBufferContent(message);
 			countD++;
 		}
 		else if (c->GetIPAddress() == destination->GetIPAddress() && countD == 1 && previousSource != nullptr)
@@ -218,22 +215,11 @@ ComputerPtr TokenRingNetwork::SendPacket(const std::string& message, ComputerPtr
 			c->SetAction(MOVE);
 			countD++;
 		}
-		else if (c->GetIPAddress() == destination->GetIPAddress() && countD == 0 && previousSource == nullptr)
-		{
-			c->SetAction(RECEIVED);
-			countD++;
-		}
-		else
-		{
-			c->SetAction(MOVE);			
-		}
+		else { c->SetAction(MOVE); }
 		c->PrintAction();
 	}
 
-	for (auto c : m_computers)
-	{
-		std::cout << *c << std::endl;
-	}	
+	for (auto c : m_computers) { std::cout << *c << std::endl; }
 
 	tokenRing.clear();
 	return source;

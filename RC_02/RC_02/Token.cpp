@@ -34,11 +34,19 @@ void Token::SetMessage(const std::string& message)
 	m_messageStatus = EMessageStatus::LeftSource;
 }
 
+void Token::ReachedDestination()
+{
+	if(m_status == ETokenStatus::Occupied)
+		m_messageStatus = EMessageStatus::ReachedDestination;
+}
+
 void Token::Free()
 {
+	m_sourceIP = "";
+	m_destinationIP = "";
 	m_message = "";
 	m_status = ETokenStatus::Free;
-	m_messageStatus = EMessageStatus::ReachedDestination;
+	m_messageStatus = EMessageStatus::ReturnedToSource;
 }
 
 bool Token::IsFree()

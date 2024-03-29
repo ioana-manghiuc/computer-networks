@@ -14,6 +14,7 @@ public:
 	void SetSourceIP(const std::string& sourceIP);
 	void SetDestinationIP(const std::string& destinationIP);
 	void SetMessage(const std::string& message); // sets statuses as well
+	void ReachedDestination();
 	void Free();
 
 	bool IsFree();
