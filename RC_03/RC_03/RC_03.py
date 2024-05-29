@@ -38,6 +38,9 @@ def has_new_elements_in_window(window: np.ndarray, ack_vector: np.ndarray) -> bo
             return False
     return True
 
+def random_index(range: int) -> int:
+    return random.randint(0, range - 1)
+
 class Source:
     def __init__(self, memory_size: int, window_size: int):
         self.memory = create_packets(memory_size)
@@ -53,6 +56,10 @@ class Destination:
         self.sent_ack = np.zeros(source.memory_size, dtype=bool)
 
 def send_packet(source: Source, destination: Destination):
+    
+    lost_packet:int = random_index(source.memory_size)
+    lost_ack:int = random_index(destination.memory_size)
+
     try:
         while not (np.all(destination.sent_ack) and np.all(source.received_ack)):
             
@@ -85,7 +92,7 @@ def send_packet(source: Source, destination: Destination):
 
 
 if __name__ == "__main__":
-    source = Source(10, 3)
+    source = Source(8, 3)
     print(source.memory)
     destination = Destination(source)
     send_packet(source, destination)
