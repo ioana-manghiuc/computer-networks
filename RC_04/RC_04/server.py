@@ -32,6 +32,7 @@ def start_server(host='127.0.0.1', port=65432):
         conn, addr = s.accept()
         with conn:
             print(f'Connected by {addr}')
+            print("\n\n")
             data = conn.recv(2048).decode('utf-8')
             if data:
                 encrypted_message, key = data.split('||')

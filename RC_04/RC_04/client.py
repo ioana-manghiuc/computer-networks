@@ -1,5 +1,8 @@
 import socket
 
+def validate_key(key):
+    return len(key) == len(set(key)) and all (char.isalpha() for char in key)
+
 def create_order(key):
     return [sorted(key).index(char) + 1 for char in key]
 
@@ -8,6 +11,7 @@ def encrypt(key, message):
     num_cols = len(key)
     num_rows = (len(message) + num_cols - 1) // num_cols
 
+    # pads the message with extra characters to make it a multiple of num_cols, generating letters from 'a' to 'z' (cycles from ASCII 97)
     padded_message = message + ''.join(chr(97 + i % 26) for i in range(num_cols * num_rows - len(message)))
 
     matrix = [padded_message[i * num_cols:(i + 1) * num_cols] for i in range(num_rows)]
@@ -29,7 +33,12 @@ def start_client(message, key, host='127.0.0.1', port=65432):
         print(f'Encrypted message sent: {encrypted_message}')
 
 if __name__ == '__main__':
-    key = 'salut'
     message = input('Enter the message: ')
-    start_client(message, key)
+    while True:
+        key = input('Enter the key: ')
+        if validate_key(key):
+            start_client(message, key)
+            break
+        else:
+            print('Invalid key. Please enter a key with unique alphabetical characters.')
 
