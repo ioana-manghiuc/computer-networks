@@ -14,9 +14,10 @@ def initialize_window(memory: np.ndarray, window_size: int):
         window[i] = memory[i]
     return window
 
+def all_true(vector: np.ndarray) -> bool:
+    return np.all(vector)
+
 def slide_window(window: np.ndarray, memory: np.ndarray, received_ack: np.ndarray):
-    if len(window) == 0:
-        return window
     window_start = np.where(memory == window[0])[0][0]
     window_end = window_start + len(window)
     
@@ -39,7 +40,7 @@ def has_new_elements_in_window(window: np.ndarray, ack_vector: np.ndarray) -> bo
     return True
 
 def random_index(range: int) -> int:
-    return random.randint(0, range - 1)
+    return np.random.randint(0, range - 1)
 
 class Source:
     def __init__(self, memory_size: int, window_size: int):
@@ -56,44 +57,53 @@ class Destination:
         self.sent_ack = np.zeros(source.memory_size, dtype=bool)
 
 def send_packet(source: Source, destination: Destination):
+    lost_packet = random_index(source.memory_size)
+    print("Lost packet index:", lost_packet)
     
-    lost_packet:int = random_index(source.memory_size)
-    lost_ack:int = random_index(destination.memory_size)
+    while not (np.all(destination.sent_ack) and np.all(source.received_ack)):
+        if len(source.window) < source.window_size:  # adjust window size if needed
+            source.window_size = len(source.window)
 
-    try:
-        while not (np.all(destination.sent_ack) and np.all(source.received_ack)):
-            
-            if len(source.window) < source.window_size: # adjust window size if needed
-                source.window_size = len(source.window)
-            
-            if all(not destination.sent_ack[i] for i in source.window): # send all packets in window
-                for packet_value in source.window:
-                    time.sleep(1)
-                    print(f"Sending packet {packet_value}...")
-               
-                for packet_value in source.window:  # mark all packets as sent and send acknowledgments
-                    packet_index = np.where(source.memory == packet_value)[0][0]
+        if all(not destination.sent_ack[np.where(source.memory == packet_value)[0][0]] for packet_value in source.window):
+            for packet_value in source.window:
+                time.sleep(1)
+                print(f"Sending packet {packet_value}...")
+
+            for packet_value in source.window:  # mark packets as sent/lost and handle acknowledgments
+                packet_index = np.where(source.memory == packet_value)[0][0]
+                if packet_index != lost_packet:
                     destination.memory[packet_index] = packet_value
+                    print(f"Packet {packet_value} received by destination!")
                     destination.sent_ack[packet_index] = True
+                    print(f"Sending ACK {packet_value}...")
                     source.received_ack[packet_value] = True
-                    time.sleep(1)
-                    if source.received_ack[packet_value]:
-                        print(f"ACK {packet_value} received!")
+                else:
+                    destination.sent_ack[packet_index] = False
+                    source.received_ack[packet_value] = False
+                    time.sleep(5)  # simulate timeout 
+                    print(f"Timeout! Resending packet {packet_value}...")
 
-                source.window = slide_window(source.window, source.memory, source.received_ack)
-            else:
-                source.window = slide_window(source.window, source.memory, source.received_ack)  # slide the window even if not all packets are new
+                    # resend lost packet
+                    destination.memory[packet_index] = packet_value
+                    print(f"Packet {packet_value} received by destination!")
+                    destination.sent_ack[packet_index] = True
+                    print(f"Sending ACK {packet_value}...")
+                    source.received_ack[packet_value] = True
 
-        print("All packets sent and acknowledged.")
-        print("Destination memory:", destination.memory)
+                time.sleep(1)
+                if source.received_ack[packet_value]:
+                    print(f"ACK {packet_value} received\n")
 
-    except KeyboardInterrupt:
-        print("Program interrupted.")
+        source.window = slide_window(source.window, source.memory, source.received_ack)
+
+    print("All packets sent and acknowledged.")
+    print("Destination memory:", destination.memory)
+
 
 
 if __name__ == "__main__":
     source = Source(8, 3)
-    print(source.memory)
+    print("Source memory: ", source.memory)
     destination = Destination(source)
     send_packet(source, destination)
 
