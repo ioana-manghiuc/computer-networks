@@ -4,23 +4,23 @@ def create_order(key):
     return [sorted(key).index(char) + 1 for char in key]
 
 def decrypt(key, encrypted_text):
-    order = create_order(key)
+    order = create_order(key) # order of the columns based on alphabetical order of the key
     num_cols = len(key)
     num_rows = len(encrypted_text) // num_cols
 
-    cols = [''] * num_cols
-    col_lengths = [num_rows] * num_cols
+    cols = [''] * num_cols # list of empty strings, one for each column
+    col_lengths = [num_rows] * num_cols # chars per column
 
     index = 0
     for i in range(num_cols):
         col_index = order.index(i + 1)
         cols[col_index] = encrypted_text[index:index + col_lengths[i]]
-        index += col_lengths[i]
+        index += col_lengths[i] # move to the next segment of the encrypted text
 
     decrypted_text = ''
     for row in range(num_rows):
         for col in range(num_cols):
-            decrypted_text += cols[col][row]
+            decrypted_text += cols[col][row]      
 
     return decrypted_text
 
