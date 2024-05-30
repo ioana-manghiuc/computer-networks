@@ -42,6 +42,12 @@ def has_new_elements_in_window(window: np.ndarray, ack_vector: np.ndarray) -> bo
 def random_index(range: int) -> int:
     return np.random.randint(0, range - 1)
 
+def generate_lost_ack(memory_size, lost_packet):
+    while True:
+        lost_ack = random_index(memory_size)
+        if lost_ack != lost_packet:
+            return lost_ack
+
 class Source:
     def __init__(self, memory_size: int, window_size: int):
         self.memory = create_packets(memory_size)
@@ -56,9 +62,15 @@ class Destination:
         self.memory = np.zeros(source.memory_size, dtype=int)
         self.sent_ack = np.zeros(source.memory_size, dtype=bool)
 
+def resend_ack(packet_value, source:Source):
+    print(f"Resending ACK {packet_value}...")
+    source.received_ack[packet_value] = True
+    
 def send_packet(source: Source, destination: Destination):
     lost_packet = random_index(source.memory_size)
+    lost_ack = generate_lost_ack(source.memory_size, lost_packet)
     print("Lost packet index:", lost_packet)
+    print("Lost ACK index:", lost_ack)
     
     while not (np.all(destination.sent_ack) and np.all(source.received_ack)):
         if len(source.window) < source.window_size:  # adjust window size if needed
@@ -76,8 +88,15 @@ def send_packet(source: Source, destination: Destination):
                     print(f"Packet {packet_value} received by destination!")
                     destination.sent_ack[packet_index] = True
                     print(f"Sending ACK {packet_value}...")
-                    source.received_ack[packet_value] = True
+                    
+                    if packet_value != lost_ack:
+                        source.received_ack[packet_value] = True
+                    else:
+                        print(f"ACK for packet {packet_value} is lost!")
+                        # simulate a timeout for lost ACK and resend
+                        threading.Timer(5, resend_ack, args=[packet_value, source]).start()
                 else:
+                    print(f"Packet {packet_value} is lost!")
                     destination.sent_ack[packet_index] = False
                     source.received_ack[packet_value] = False
                     time.sleep(5)  # simulate timeout 
@@ -88,17 +107,23 @@ def send_packet(source: Source, destination: Destination):
                     print(f"Packet {packet_value} received by destination!")
                     destination.sent_ack[packet_index] = True
                     print(f"Sending ACK {packet_value}...")
-                    source.received_ack[packet_value] = True
+                    if packet_value != lost_ack:
+                        source.received_ack[packet_value] = True
 
                 time.sleep(1)
                 if source.received_ack[packet_value]:
+                    print(f"ACK {packet_value} received\n")
+                    
+                else: # handle lost ACK
+                    time.sleep(5)  # simulate timeout for lost ACK
+                    print(f"Timeout! Resending ACK {packet_value}...")
+                    source.received_ack[packet_value] = True
                     print(f"ACK {packet_value} received\n")
 
         source.window = slide_window(source.window, source.memory, source.received_ack)
 
     print("All packets sent and acknowledged.")
     print("Destination memory:", destination.memory)
-
 
 
 if __name__ == "__main__":
